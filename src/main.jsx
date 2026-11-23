@@ -1,6 +1,6 @@
 import React, {useState, useEffect, useRef} from 'react';
 import {createRoot} from 'react-dom/client';
-import {Lightbulb, Volume2, VolumeX, RotateCcw, HelpCircle, X, Check, CheckCircle2} from 'lucide-react';
+import {Lightbulb, Volume2, VolumeX, RotateCcw, HelpCircle, X, Check, CheckCircle2, Sparkles} from 'lucide-react';
 import Scene from './Scene.jsx';
 import {playSound} from './audio';
 import {LESSONS, evaluateAnswer} from './lesson';
@@ -25,7 +25,7 @@ function App(){
  function reset(){if(busy)return;go(0);setSeen({off:true,on:false});setDone([]);}
  async function check(){
   if(answer===null||reason===null||busy||feedback?.correct)return;
-  if(!evaluateAnswer(lesson,answer,reason)){setFeedback({correct:false,text:'Revisa tu predicción y el motivo. Puedes cambiar tu elección y volver a probar.'});setHint(true);announceSound('hint');return;}
+  if(!evaluateAnswer(lesson,answer,reason)){setFeedback({correct:false,text:answer===lesson.answer?'Elegiste el estado correcto. Revisa el motivo para explicar por qué.':reason===lesson.reason?'Tu motivo va bien. Revisa qué estado queda al aplicar esa idea.':'Tu predicción todavía no coincide con la regla. Vamos paso a paso.'});setHint(true);announceSound('hint');return;}
   setBusy(true);setHint(false);setFeedback(null);
   for(let i=0;i<lesson.flips;i++){
    await new Promise(resolve=>{timers.current.push(setTimeout(resolve,reduced?180:650))});
@@ -43,8 +43,8 @@ function App(){
    <aside className="readout glass" aria-label="Estado actual del foco"><strong>{step===3&&!feedback?.correct?'?':currentValue}</strong><span>{on?'Encendido':'Apagado'}</span></aside>
    {step!==0&&<div className="stage-action"><div className="sequence-indicator glass"><span>{step===3?'Solo cambia la regla':busy?`Toque ${tick} de ${lesson.flips}`:feedback?.correct?'Observa el resultado':`La app hará ${lesson.flips} ${lesson.flips===1?'toque':'toques'} al comprobar`}</span>{step===2&&<div>{[0,1,2,3].map((v,i)=><React.Fragment key={i}><b className={tick>=i?'reached':''}>{tick>=i?v%2:'?'}</b>{i<3&&<span>·</span>}</React.Fragment>)}</div>}</div></div>}
   </section>
-  <section className={`activity glass ${answer!==null?'has-answer':''}`} aria-label="Actividad de aprendizaje">
-   {ended?<><div className="result-icon"><CheckCircle2 size={26}/></div><h2>La lógica está en la regla.</h2><p>Los símbolos representan estados. Puedes seguir los cambios y aplicar una correspondencia diferente.</p><button className="primary-button" onClick={reset}>Volver a experimentar</button></>:step===0?<><h2>Un foco. Dos estados.</h2><div className="state-pair"><span className={!on?'selected':''}><b>0</b> Apagado {seen.off&&<Check size={14}/>}</span><span className={on?'selected':''}><b>1</b> Encendido {seen.on&&<Check size={14}/>}</span></div><p className="explore-status" role="status">{canContinue?'Ya descubriste los dos estados. ¿Probamos una predicción?':'Toca el apagador 3D para encender el foco.'}</p><button className="primary-button" disabled={!canContinue} onClick={()=>{markDone();go(1);announceSound('on')}}>Ponerme a prueba</button></>:<>
+  <section className={`activity glass ${answer!==null?'has-answer':''} ${feedback?'result-view':''}`} aria-label="Actividad de aprendizaje">
+   {ended?<><div className="result-icon"><CheckCircle2 size={26}/></div><h2>La lógica está en la regla.</h2><p>Los símbolos representan estados. Puedes seguir los cambios y aplicar una correspondencia diferente.</p><button className="primary-button" onClick={reset}>Volver a experimentar</button></>:feedback?<Outcome key={feedback.correct?'correct':'retry'} correct={feedback.correct} message={feedback.correct?lesson.success:feedback.text} hint={lesson.hint} answer={answer} onContinue={()=>{if(feedback.correct){if(step<3)go(step+1);else{setFeedback(null);setEnded(true);announceSound('correct')}}else{setFeedback(null);setHint(true)}}} label={feedback.correct?(step===3?'Ver lo que aprendí':'Siguiente reto'):'Volver a intentar'}/>:step===0?<><h2>Un foco. Dos estados.</h2><div className="state-pair"><span className={!on?'selected':''}><b>0</b> Apagado {seen.off&&<Check size={14}/>}</span><span className={on?'selected':''}><b>1</b> Encendido {seen.on&&<Check size={14}/>}</span></div><p className="explore-status" role="status">{canContinue?'Ya descubriste los dos estados. ¿Probamos una predicción?':'Toca el apagador 3D para encender el foco.'}</p><button className="primary-button" disabled={!canContinue} onClick={()=>{markDone();go(1);announceSound('on')}}>Ponerme a prueba</button></>:<>
     <div className="activity-top"><h2>{lesson.question}</h2><button className="hint-button" aria-label={hint?'Ocultar pista':'Necesito una pista'} disabled={busy||feedback?.correct} onClick={()=>{setHint(!hint);if(!hint)announceSound('hint')}}><Lightbulb size={16}/> Pista</button></div>
     <div className="answer-row"><span className="field-label">1. Elige {step===3?'el símbolo':'el estado final'}</span><div className="answer-options" role="group" aria-label="Elige el número">{[0,1].map(n=><button key={n} aria-pressed={answer===n} disabled={busy||feedback?.correct} onClick={()=>{setAnswer(n);setFeedback(null)}}>{n}<small>{step===3?(n===0?'Encendido':'Apagado'):(n===0?'Apagado':'Encendido')}</small></button>)}</div></div>
     <div className="answer-summary"><span>Elegiste <b>{answer}</b> · {step===3?(answer===0?'Encendido':'Apagado'):(answer===0?'Apagado':'Encendido')}</span><button disabled={busy||feedback?.correct} onClick={()=>{setAnswer(null);setReason(null);setFeedback(null)}}>Cambiar</button></div><fieldset className="reason-options" disabled={busy||feedback?.correct}><legend>2. Elige por qué</legend>{lesson.reasons.map((r,i)=><label key={r} className={reason===i?'selected':''}><input type="radio" name="reason" checked={reason===i} onChange={()=>{setReason(i);setFeedback(null)}}/><span>{r}</span></label>)}</fieldset>
@@ -55,6 +55,17 @@ function App(){
   <nav className="lesson-nav glass" aria-label="Momentos de la lección"><span className="nav-pill" style={{transform:`translateX(${step*100}%)`}}/>{LESSONS.map((l,i)=><button key={l.id} aria-current={step===i?'step':undefined} disabled={busy} onClick={()=>go(i)}><span className={`nav-step ${done.includes(i)?'done':''}`}>{done.includes(i)?<Check size={12}/>:i+1}</span>{l.label}</button>)}</nav>
   {help&&<HelpModal close={()=>setHelp(false)}/>}
  </main>;
+}
+
+function Outcome({correct,message,hint,answer,onContinue,label}){
+ const action=useRef();
+ useEffect(()=>{action.current?.focus({preventScroll:true})},[]);
+ return <div className={`outcome ${correct?'success':'retry'}`}>
+  <div className="outcome-art" aria-hidden="true"><div className="outcome-ring">{correct?<CheckCircle2 size={38}/>:<RotateCcw size={34}/>}</div>{correct&&Array.from({length:8},(_,i)=><i key={i} style={{'--i':i}}/>)}{correct&&<Sparkles className="outcome-spark" size={20}/>}</div>
+  <div role="status" aria-live="polite" aria-atomic="true"><span className="outcome-kicker">{correct?'PREDICCIÓN COMPROBADA':'OTRA OPORTUNIDAD'}</span><h2>{correct?'¡Lo descubriste!':'Todavía no. ¡Probemos otra vez!'}</h2><p>{message}</p></div>
+  {!correct&&<div className="outcome-hint"><Lightbulb size={17}/><p>{hint}</p></div>}
+  <button ref={action} className="primary-button" onClick={onContinue}>{label}</button>
+ </div>;
 }
 
 function HelpModal({close}){
