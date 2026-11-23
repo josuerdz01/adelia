@@ -1,11 +1,29 @@
 let context;
+// iOS needs creation/resume in the original tap, before any animation or await.
+export function unlockAudio(enabled = true) {
+  if (!enabled) return false;
+  try {
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) return false;
+    if (!context || context.state === 'closed') context = new Audio({latencyHint:'interactive'});
+    // Feature-detect: Safari can route explicit playback differently from ambient effects.
+    if (navigator.audioSession && navigator.audioSession.type !== 'playback') {
+      try { navigator.audioSession.type = 'playback'; } catch { /* Optional API. */ }
+    }
+    if (context.state !== 'running') {
+      context.resume().catch(() => {});
+      const prime = context.createBufferSource();
+      prime.buffer = context.createBuffer(1, 1, context.sampleRate);
+      prime.connect(context.destination); prime.start(0);
+    }
+    return true;
+  } catch { return false; }
+}
 export async function playSound(kind, enabled = true) {
   if (!enabled) return;
   try {
-    const Audio = window.AudioContext || window.webkitAudioContext;
-    if (!Audio) return;
-    context ||= new Audio();
-    await context.resume();
+    if (!unlockAudio(enabled)) return;
+    if (context.state !== 'running') await context.resume();
     const now = context.currentTime;
     const tone = (frequency, start, duration, volume, type = 'sine') => {
       const osc = context.createOscillator(), gain = context.createGain();

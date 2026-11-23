@@ -2,7 +2,7 @@ import React, {useState, useEffect, useRef} from 'react';
 import {createRoot} from 'react-dom/client';
 import {Lightbulb, Volume2, VolumeX, RotateCcw, HelpCircle, X, Check, CheckCircle2, Sparkles} from 'lucide-react';
 import Scene from './Scene.jsx';
-import {playSound} from './audio';
+import {playSound, unlockAudio} from './audio';
 import {LESSONS, evaluateAnswer} from './lesson';
 import './style.css';
 
@@ -35,7 +35,7 @@ function App(){
  }
  const currentValue=step===3?(on?0:1):(on?1:0);
  const canContinue=step===0?seen.on&&seen.off:feedback?.correct;
- return <main className={`app ${on?'is-on':''}`}>
+ return <main onClickCapture={()=>unlockAudio(sound.current)} onTouchEndCapture={()=>unlockAudio(sound.current)} onKeyDownCapture={e=>{if(e.key==='Enter'||e.key===' ')unlockAudio(sound.current)}} className={`app ${on?'is-on':''}`}>
   <header className="header"><a className="brand" href="#" onClick={e=>{e.preventDefault();reset()}} aria-label="Adelia, volver al inicio"><Lightbulb size={24}/><span>adelia.</span></a><span className="header-topic">Lógica · Dos estados</span><div className="header-actions"><button className="icon-button" aria-label={muted?'Activar sonido':'Silenciar sonido'} aria-pressed={!muted} onClick={()=>{setMuted(!muted);if(muted)playSound('on',true)}}>{muted?<VolumeX size={18}/>:<Volume2 size={18}/>}</button><button className="icon-button" aria-label="Reiniciar lección" disabled={busy} onClick={reset}><RotateCcw size={17}/></button><button className="icon-button" aria-label="Cómo funciona" onClick={()=>setHelp(true)}><HelpCircle size={18}/></button></div></header>
   <section className="intro" aria-labelledby="lesson-title"><h1 id="lesson-title">{ended?'Una idea encendida.':lesson.title}</h1><p>{ended?'Observaste, predijiste y seguiste una regla nueva.':lesson.description}</p></section>
   <section className="experiment" aria-label="Laboratorio interactivo">
