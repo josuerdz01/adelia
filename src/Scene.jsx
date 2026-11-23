@@ -1,7 +1,8 @@
 import React, { Suspense, useMemo, useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { RoundedBox, OrbitControls, ContactShadows } from '@react-three/drei';
+import { RoundedBox, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
+import { Hand } from 'lucide-react';
 
 function Bulb({on, reduced}) {
   const glass=useRef(), light=useRef(), coil=useRef();
@@ -31,10 +32,12 @@ function Bulb({on, reduced}) {
     <pointLight ref={light} position={[0,1.5,.15]} color="#ffc65c" intensity={0} distance={8} decay={2}/>
   </group>;
 }
-function Switch({on,onToggle,locked,reduced}) {
-  const rocker=useRef();
+function Switch({on,onToggle,locked,reduced,targetRef}) {
+  const rocker=useRef(),root=useRef();
+  const projected=useMemo(()=>new THREE.Vector3(),[]);
+  useFrame(({camera,size})=>{if(root.current&&targetRef.current){projected.set(0,0,.28).applyMatrix4(root.current.matrixWorld).project(camera);targetRef.current.style.transform=`translate(${(projected.x+1)*size.width/2-40}px,${(1-projected.y)*size.height/2-33}px)`}});
   useFrame((_,dt)=>{if(rocker.current)rocker.current.rotation.x=THREE.MathUtils.damp(rocker.current.rotation.x,on?-.17:.17,reduced?100:15,dt)});
-  return <group position={[1.05,.14,.40]} rotation={[-Math.PI/2,0,-.12]} onClick={e=>{e.stopPropagation();if(!locked)onToggle()}} onPointerOver={()=>{if(!locked)document.body.style.cursor='pointer'}} onPointerOut={()=>document.body.style.cursor='auto'}>
+  return <group ref={root} position={[1.05,.14,.40]} rotation={[-Math.PI/2,0,-.12]} onClick={e=>{e.stopPropagation();if(!locked)onToggle()}} onPointerOver={()=>{if(!locked)document.body.style.cursor='pointer'}} onPointerOut={()=>document.body.style.cursor='auto'}>
     <RoundedBox args={[.93,1.26,.16]} radius={.14} smoothness={5} castShadow receiveShadow><meshStandardMaterial color="#e8e5d6" roughness={.4} metalness={.04}/></RoundedBox>
     <RoundedBox args={[.54,.90,.08]} position={[0,0,.10]} radius={.075} smoothness={4}><meshStandardMaterial color="#1f2a23" roughness={.6}/></RoundedBox>
     <group ref={rocker} position={[0,0,.17]}>
@@ -42,10 +45,11 @@ function Switch({on,onToggle,locked,reduced}) {
       <mesh position={[0,.23,.075]}><boxGeometry args={[.025,.10,.008]}/><meshStandardMaterial color="#53624c"/></mesh>
       <mesh position={[0,-.22,.075]}><ringGeometry args={[.035,.047,24]}/><meshBasicMaterial color="#53624c" side={THREE.DoubleSide}/></mesh>
     </group>
+
     {[.5,-.5].map(y=><group key={y} position={[0,y,.09]}><mesh><cylinderGeometry args={[.038,.038,.012,20]}/><meshStandardMaterial color="#b6b6a6" metalness={.6}/></mesh></group>)}
   </group>;
 }
-function World({on,onToggle,locked,reduced}) {
+function World({on,onToggle,locked,reduced,targetRef}) {
  const cable=useMemo(()=>new THREE.CatmullRomCurve3([new THREE.Vector3(-.2,.11,.35),new THREE.Vector3(.05,.09,.85),new THREE.Vector3(.35,.09,1.1),new THREE.Vector3(.95,.09,1.1),new THREE.Vector3(1.1,.12,.85)]),[]);
  const cableGeometry=useMemo(()=>new THREE.TubeGeometry(cable,50,.045,10,false),[cable]);
  return <>
@@ -58,7 +62,7 @@ function World({on,onToggle,locked,reduced}) {
     <mesh position={[0,-.19,0]}><cylinderGeometry args={[2.64,2.64,.07,96]}/><meshStandardMaterial color="#425444" roughness={.5} metalness={.4}/></mesh>
     <Bulb on={on} reduced={reduced}/>
     <mesh geometry={cableGeometry} castShadow><meshStandardMaterial color="#5f7254" roughness={.5}/></mesh>
-    <Switch on={on} onToggle={onToggle} locked={locked} reduced={reduced}/>
+    <Switch on={on} onToggle={onToggle} locked={locked} reduced={reduced} targetRef={targetRef}/>
 
    </group>
 
@@ -67,6 +71,7 @@ function World({on,onToggle,locked,reduced}) {
 }
 class SceneBoundary extends React.Component {state={failed:false};static getDerivedStateFromError(){return{failed:true}}render(){return this.state.failed?this.props.fallback:this.props.children}}
 export default function Scene(props) {
- const fallback=<div className={`fallback-bulb ${props.on?'lit':''}`} aria-hidden="true"><span>💡</span></div>;
- return <SceneBoundary fallback={fallback}><Canvas shadows dpr={[1,1.75]} camera={{position:[3.3,3.5,6.7],fov:36}} gl={{antialias:true,alpha:false}} aria-label={`Escena 3D: foco ${props.on?'encendido':'apagado'} conectado a un apagador`}><Suspense fallback={null}><World {...props}/></Suspense></Canvas></SceneBoundary>
+ const targetRef=useRef();
+ const fallback=<div className={`fallback-bulb ${props.on?'lit':''}`} aria-hidden="true"><span>💡</span>{!props.locked&&<button className="primary-button" onClick={props.onToggle}>Cambiar estado del foco</button>}</div>;
+ return <div className="scene-container"><SceneBoundary fallback={fallback}><Canvas shadows dpr={[1,1.75]} camera={{position:[3.3,3.5,6.7],fov:36}} gl={{antialias:true,alpha:false}} aria-label={`Escena 3D: foco ${props.on?'encendido':'apagado'} conectado a un apagador`}><Suspense fallback={null}><World {...props} targetRef={targetRef}/></Suspense></Canvas></SceneBoundary>{!props.locked&&<div ref={targetRef} className="switch-target"><button className="switch-hit-area" role="switch" aria-label="Apagador 3D del foco" aria-checked={props.on} onClick={props.onToggle}/><div className={`touch-cue ${props.showHint?'visible':''}`} aria-hidden="true"><span className="tap-ring"/><Hand size={25}/><span className="tap-label">Toca aquí</span></div></div>}</div>;
 }

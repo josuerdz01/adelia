@@ -1,4 +1,4 @@
-# Kaanbal · Laboratorio de lógica
+# Adelia · Laboratorio de lógica
 
 Demo independiente del tutor Python. React 19 + Vite 7, Three.js, React Three Fiber y Drei, con iconos de Lucide. Toma como referencias la composición de escena y controles flotantes de Marciano y WaterWiki.
 
@@ -21,7 +21,7 @@ Para producción: `pnpm build`. El sitio estático se genera en `dist/`.
 - Predicción de un cambio, secuencia de tres cambios y transferencia a una regla invertida.
 - El número y la justificación deben ser correctos. Los errores ofrecen una pista, sin avanzar.
 - Animación secuencial, progreso durante la sesión, reinicio, ayuda modal y movimiento reducido.
-- Versión móvil con desplazamiento vertical y versión de escritorio con escena completa.
+- Interfaz en un solo viewport con escena, actividad y navegación visibles; en teléfonos de poca altura, la selección de estado precede a la justificación.
 
 ## Límites
 
